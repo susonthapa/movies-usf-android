@@ -11,10 +11,7 @@ import androidx.swiperefreshlayout.widget.CircularProgressDrawable
 import co.kaush.msusf.MSActivity
 import co.kaush.msusf.R
 import co.kaush.msusf.movies.MSMainVm.MSMainVmFactory
-import co.kaush.msusf.movies.MSMovieEvent.AddToHistoryEvent
-import co.kaush.msusf.movies.MSMovieEvent.RestoreFromHistoryEvent
-import co.kaush.msusf.movies.MSMovieEvent.ScreenLoadEvent
-import co.kaush.msusf.movies.MSMovieEvent.SearchMovieEvent
+import co.kaush.msusf.movies.MSMovieEvent.*
 import com.jakewharton.rxbinding2.view.RxView
 import com.squareup.picasso.Picasso
 import io.reactivex.Observable
@@ -57,27 +54,27 @@ class MSMovieActivity : MSActivity() {
         setupListView()
 
         viewModel = ViewModelProviders.of(
-            this,
-            MSMainVmFactory(app, movieRepo)
+                this,
+                MSMainVmFactory(app, movieRepo)
         ).get(MSMainVm::class.java)
 
         disposables.add(
-            viewModel
-                .viewState
-                .observeOn(AndroidSchedulers.mainThread())
-                .doOnNext { Timber.d("----- onNext VS $it") }
-                .subscribe(
-                    ::render
-                ) { Timber.w(it, "something went terribly wrong processing view state") }
+                viewModel
+                        .viewState
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .doOnNext { Timber.d("----- onNext VS $it") }
+                        .subscribe(
+                                ::render
+                        ) { Timber.w(it, "something went terribly wrong processing view state") }
         )
 
         disposables.add(
-            viewModel
-                .viewEffects
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(
-                    ::trigger
-                ) { Timber.w(it, "something went terribly wrong processing view effects") }
+                viewModel
+                        .viewEffects
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .subscribe(
+                                ::trigger
+                        ) { Timber.w(it, "something went terribly wrong processing view effects") }
         )
     }
 
@@ -96,25 +93,35 @@ class MSMovieActivity : MSActivity() {
     }
 
     private fun render(vs: MSMovieViewState) {
-        vs.searchBoxText?.let {
+        vs.searchBoxText?.getValueIfChanged()?.let {
             ms_mainScreen_searchText.setText(it)
         }
-        ms_mainScreen_title.text = vs.searchedMovieTitle
-        ms_mainScreen_rating.text = vs.searchedMovieRating
+
+        vs.searchedMovieTitle.getValueIfChanged()?.let {
+            ms_mainScreen_title.text = it
+        }
+
+        vs.searchedMovieRating.getValueIfChanged()?.let {
+            ms_mainScreen_rating.text = it
+        }
 
         vs.searchedMoviePoster
-            .takeIf { it.isNotBlank() }
-            ?.let {
-                Picasso.get()
-                    .load(vs.searchedMoviePoster)
-                    .placeholder(spinner)
-                    .into(ms_mainScreen_poster)
+                .getValueIfChanged()
+                ?.takeIf { it.isNotBlank() }
+                ?.let {
+                    Picasso.get()
+                            .load(it)
+                            .placeholder(spinner)
+                            .into(ms_mainScreen_poster)
 
-                ms_mainScreen_poster.setTag(R.id.TAG_MOVIE_DATA, vs.searchedMovieReference)
-            }
-            ?: run { ms_mainScreen_poster.setImageResource(0) }
+                    ms_mainScreen_poster.setTag(R.id.TAG_MOVIE_DATA, vs.searchedMovieReference?.value)
+                }
+                ?: run { ms_mainScreen_poster.setImageResource(0) }
 
-        listAdapter.submitList(vs.adapterList)
+        vs.adapterList.getValueIfChanged()?.let {
+            listAdapter.submitList(it)
+        }
+
     }
 
     override fun onResume() {
@@ -122,26 +129,26 @@ class MSMovieActivity : MSActivity() {
 
         val screenLoadEvents: Observable<ScreenLoadEvent> = Observable.just(ScreenLoadEvent)
         val searchMovieEvents: Observable<SearchMovieEvent> = RxView.clicks(ms_mainScreen_searchBtn)
-            .map { SearchMovieEvent(ms_mainScreen_searchText.text.toString()) }
+                .map { SearchMovieEvent(ms_mainScreen_searchText.text.toString()) }
         val addToHistoryEvents: Observable<AddToHistoryEvent> = RxView.clicks(ms_mainScreen_poster)
-            .map {
-                ms_mainScreen_poster.growShrink()
-                AddToHistoryEvent(ms_mainScreen_poster.getTag(R.id.TAG_MOVIE_DATA) as MSMovie)
-            }
+                .map {
+                    ms_mainScreen_poster.growShrink()
+                    AddToHistoryEvent(ms_mainScreen_poster.getTag(R.id.TAG_MOVIE_DATA) as MSMovie)
+                }
         val restoreFromHistoryEvents: Observable<RestoreFromHistoryEvent> = historyItemClick
-            .map { RestoreFromHistoryEvent(it) }
+                .map { RestoreFromHistoryEvent(it) }
 
         uiDisposable =
-            Observable.merge(
-                screenLoadEvents,
-                searchMovieEvents,
-                addToHistoryEvents,
-                restoreFromHistoryEvents
-            )
-                .subscribe(
-                    { viewModel.processInput(it) },
-                    { Timber.e(it, "error processing input ") }
+                Observable.merge(
+                        screenLoadEvents,
+                        searchMovieEvents,
+                        addToHistoryEvents,
+                        restoreFromHistoryEvents
                 )
+                        .subscribe(
+                                { viewModel.processInput(it) },
+                                { Timber.e(it, "error processing input ") }
+                        )
     }
 
     override fun onPause() {
@@ -155,7 +162,7 @@ class MSMovieActivity : MSActivity() {
 
         val dividerItemDecoration = DividerItemDecoration(this, HORIZONTAL)
         dividerItemDecoration.setDrawable(
-            ContextCompat.getDrawable(this, R.drawable.ms_list_divider_space)!!
+                ContextCompat.getDrawable(this, R.drawable.ms_list_divider_space)!!
         )
         ms_mainScreen_searchHistory.addItemDecoration(dividerItemDecoration)
 

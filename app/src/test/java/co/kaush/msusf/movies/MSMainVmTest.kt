@@ -75,8 +75,8 @@ class MSMainVmTest {
 
         viewStateTester.assertValueAt(3) {
             assertThat(it.searchBoxText).isEqualTo(null) // prevents search box from reset
-            assertThat(it.adapterList).hasSize(1)
-            assertThat(it.adapterList[0]).isEqualTo(bladeRunner2049)
+            assertThat(it.adapterList.value).hasSize(1)
+            assertThat(it.adapterList.value[0]).isEqualTo(bladeRunner2049)
             true
         }
 

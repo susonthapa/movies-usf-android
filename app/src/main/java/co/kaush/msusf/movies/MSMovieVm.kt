@@ -1,5 +1,6 @@
 package co.kaush.msusf.movies
 
+import android.view.View
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -86,34 +87,36 @@ class MSMainVm(
                 is Lce.Content -> {
                     when (result.packet) {
                         is ScreenLoadResult -> {
-                            vs.copy(searchBoxText = "")
+                            vs.stateCopy(searchBoxText = ViewBox(""))
                         }
                         is SearchMovieResult -> {
                             val movie: MSMovie = result.packet.movie
-                            vs.copy(
-                                searchedMovieTitle = movie.title,
-                                searchedMovieRating = movie.ratingSummary,
-                                searchedMoviePoster = movie.posterUrl,
-                                searchedMovieReference = movie
+                            vs.stateCopy(
+                                searchedMovieTitle = ViewBox(movie.title),
+                                searchedMovieRating = ViewBox(movie.ratingSummary),
+                                searchedMoviePoster = ViewBox(movie.posterUrl),
+                                searchedMovieReference = ViewBox(movie)
                             )
                         }
 
                         is AddToHistoryResult -> {
                             val movieToBeAdded: MSMovie = result.packet.movie
 
-                            if (!vs.adapterList.contains(movieToBeAdded)) {
-                                vs.copy(adapterList = vs.adapterList.plus(movieToBeAdded))
-                            } else vs.copy()
+                            if (!vs.adapterList.value.contains(movieToBeAdded)) {
+                                vs.stateCopy(adapterList = ViewBox(vs.adapterList.value.plus(movieToBeAdded)))
+                            } else {
+                                vs
+                            }
                         }
                     }
                 }
 
                 is Lce.Loading -> {
-                    vs.copy(
+                    vs.stateCopy(
                         searchBoxText = null,
-                        searchedMovieTitle = "Searching Movie...",
-                        searchedMovieRating = "",
-                        searchedMoviePoster = "",
+                        searchedMovieTitle = ViewBox("Searching Movie..."),
+                        searchedMovieRating = ViewBox(""),
+                        searchedMoviePoster = ViewBox(""),
                         searchedMovieReference = null
                     )
                 }
@@ -122,7 +125,7 @@ class MSMainVm(
                     when (result.packet) {
                         is SearchMovieResult -> {
                             val movie: MSMovie = result.packet.movie
-                            vs.copy(searchedMovieTitle = movie.errorMessage!!)
+                            vs.stateCopy(searchedMovieTitle = ViewBox(movie.errorMessage!!))
                         }
                         else -> throw RuntimeException("Unexpected result LCE state")
                     }
